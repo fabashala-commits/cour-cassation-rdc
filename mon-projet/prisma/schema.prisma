@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum DecisionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Chamber {
+  CIVIL
+  CRIMINAL
+  ADMINISTRATIVE
+  COMMERCIAL
+  OTHER
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  JURIST
+  CITIZEN
+}
+
+model Decision {
+  id           String          @id @default(uuid())
+  title        String
+  summary      String?
+  fullText     String
+  date         DateTime
+  year         Int
+  chamber      Chamber
+  status       DecisionStatus  @default(DRAFT)
+  reference    String          @unique
+  files        DecisionFile[]
+  keywords     DecisionKeyword[]
+  magistrates  DecisionMagistrat[]
+  author       User?            @relation(fields: [authorId], references: [id])
+  authorId     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model DecisionFile {
+  id         String   @id @default(uuid())
+  decision   Decision @relation(fields: [decisionId], references: [id])
+  decisionId String
+  url        String
+  filename   String
+  mimeType   String?
+  size       Int?
+}
+
+model Keyword {
+  id    String             @id @default(uuid())
+  name  String             @unique
+  uses  DecisionKeyword[]
+}
+
+model DecisionKeyword {
+  decision   Decision @relation(fields: [decisionId], references: [id])
+  decisionId String
+  keyword    Keyword  @relation(fields: [keywordId], references: [id])
+  keywordId  String
+
+  @@id([decisionId, keywordId])
+}
+
+model Magistrat {
+  id        String                 @id @default(uuid())
+  name      String
+  role      String?
+  bio       String?
+  photoUrl  String?
+  decisions DecisionMagistrat[]
+}
+
+model DecisionMagistrat {
+  decision   Decision @relation(fields: [decisionId], references: [id])
+  decisionId String
+  magistrat  Magistrat @relation(fields: [magistratId], references: [id])
+  magistratId String
+
+  @@id([decisionId, magistratId])
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  role         UserRole  @default(CITIZEN)
+  decisions    Decision[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  email     String
+  theme     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
